@@ -7,3 +7,6 @@ jupyter
 jupyterlab
 awscli
 pytest
+gensim
+scikit-learn
+hyperdash
