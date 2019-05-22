@@ -1,0 +1,9 @@
+boto3
+pytz
+tqdm
+pandas
+jaconv
+jupyter
+jupyterlab
+awscli
+pytest
