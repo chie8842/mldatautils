@@ -1,8 +1,8 @@
 import os
 from keras.callbacks import Callback
-from datautils.utils import get_jstdate_string
-from datautils.utils import make_dirs
-from datautils.utils import ModelCheckpoint
+from mldatautils.utils import get_jstdate_string
+from mldatautils.utils import make_dirs
+from mldatautils.utils import ModelCheckpoint
 from hyperdash import Experiment
 
 class Hyperdash(Callback):

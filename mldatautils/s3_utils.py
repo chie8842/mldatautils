@@ -15,12 +15,12 @@ from pytz import timezone
 from datetime import date
 from datetime import datetime
 
-from datautils.utils import isnotebook
-from datautils.utils import make_dirs
-from datautils.utils import get_jstdate_string
-from datautils.utils import create_version
-from datautils.utils import is_valid_version
-from datautils.logger import logger_config
+from mldatautils.utils import isnotebook
+from mldatautils.utils import make_dirs
+from mldatautils.utils import get_jstdate_string
+from mldatautils.utils import create_version
+from mldatautils.utils import is_valid_version
+from mldatautils.logger import logger_config
 
 if isnotebook():
     from tqdm import tqdm_notebook as tqdm

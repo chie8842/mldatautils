@@ -1,7 +1,7 @@
 import logging
 import datetime
 import os
-from datautils.utils import make_dirs
+from mldatautils.utils import make_dirs
 
 def logger_config(log_name, loglevel='INFO', log_file='log.txt'):
     '''logger_config

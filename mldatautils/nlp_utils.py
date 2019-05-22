@@ -1,4 +1,7 @@
 import gensim
+from gensim.models import doc2vec
+from gensim.models import word2vec
+from gensim.models import fasttext
 import sklearn
 import jaconv
 
