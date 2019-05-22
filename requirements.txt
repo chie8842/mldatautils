@@ -1,0 +1,8 @@
+boto3
+pytz
+tqdm
+pandas
+jaconv
+hyperdash
+gensim
+scikit-learn
