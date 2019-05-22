@@ -1,0 +1,10 @@
+*.egg-info*
+.cache
+.coverage
+*.pyc
+__pycache__
+log.txt
+nohup.out
+downloaded_data/*
+downloaded_models/*
+upload_data/*
