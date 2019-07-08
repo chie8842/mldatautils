@@ -6,12 +6,9 @@ from setuptools import setup, find_packages
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
-with open('test_requirements.txt') as f:
-    test_requirements = f.read().splitlines()
-
 setup(
     name='mldatautils',
-    version='0.0.1',
+    version='0.0.2',
     description="mldatautils",
     long_description="mldatautils",
     download_url='https://pypi.org/project/mldatautils',
@@ -26,6 +23,5 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    tests_require=test_requirements,
     test_suite='test'
 )
