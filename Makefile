@@ -16,7 +16,7 @@ run-docker-ex:
 	-e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) \
 	-v $(PWD):/work \
 	mldatautils_ex \
-	/bin/bash /start-jupyter.sh &
+	/bin/bash
 
 run-docker-test:
 	docker run \
@@ -32,5 +32,6 @@ run-docker-test:
 	mldatautils_ex \
 	pytest
 
-upload-private-pypi:
-	python setup.py sdist upload -r pypicloud
+upload-pypi:
+	python setup.py sdist && \
+	twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
