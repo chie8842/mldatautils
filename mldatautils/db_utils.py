@@ -20,7 +20,7 @@ def _config_parse(config_file):
             'port': os.getenv('DB_PORT'),
             'database': os.getenv('DATABASE'),
         }
-    return config_file
+    return dwh_config
 
 def create_engine(config_file=None):
     dwh_config = _config_parse(config_file)
