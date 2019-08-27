@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 def _config_parse(config_file):
     if config_file is not None:
         try:
-            configs = ConfigParse()
+            configs = ConfigParser()
             configs.read(config_file)
             dwh_schema = dict(configs.items('dwh_schema'))
         except FileNotFoundError:
@@ -22,7 +22,7 @@ def _config_parse(config_file):
         }
     return dwh_config
 
-def create_engine(config_file=None):
+def engine(config_file=None):
     dwh_config = _config_parse(config_file)
     url = 'postgres://{username}:{password}@{hostname}:{port}/{database}'.format(**dwh_config)
     return create_engine(url)
