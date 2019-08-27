@@ -24,6 +24,6 @@ def _config_parse(config_file):
 
 def create_engine(config_file=None):
     dwh_config = _config_parse(config_file)
-    url = 'postgres://{user}:{password}@{host}:{port}/{database}'.format(**dwh_config)
+    url = 'postgres://{username}:{password}@{hostname}:{port}/{database}'.format(**dwh_config)
     return create_engine(url)
 
