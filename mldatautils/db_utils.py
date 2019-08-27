@@ -13,7 +13,7 @@ def _config_parse(config_file):
             logger.error(f'{config_file} does not exist.')
             sys.exit(1)
     else:
-        dwh_schema = {
+        dwh_config = {
             'username': os.getenv('DB_USERNAME'),
             'password': os.getenv('DB_PASSWORD'),
             'hostname': os.getenv('DB_HOSTNAME'),
@@ -23,7 +23,7 @@ def _config_parse(config_file):
     return config_file
 
 def create_engine(config_file=None):
-    dwh_schema = _config_parse(config_file)
+    dwh_config = _config_parse(config_file)
     url = 'postgres://{user}:{password}@{host}:{port}/{database}'.format(**dwh_config)
     return create_engine(url)
 
