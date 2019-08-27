@@ -14,11 +14,11 @@ def _config_parse(config_file):
             sys.exit(1)
     else:
         dwh_schema = {
-            'username': os.getenv('DB_USERNAME')
-            'password': os.getenv('DB_PASSWORD')
-            'hostname': os.getenv('DB_HOSTNAME')
-            'port': os.getenv('DB_PORT')
-            'database': os.getenv('DATABASE')
+            'username': os.getenv('DB_USERNAME'),
+            'password': os.getenv('DB_PASSWORD'),
+            'hostname': os.getenv('DB_HOSTNAME'),
+            'port': os.getenv('DB_PORT'),
+            'database': os.getenv('DATABASE'),
         }
     return config_file
 
