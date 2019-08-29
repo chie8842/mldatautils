@@ -2,7 +2,7 @@ import gensim
 from gensim.models import doc2vec
 from gensim.models import word2vec
 from gensim.models import fasttext
-import sklearn
+import sklearn.feature_extraction.text import TfidfVectorizer
 import jaconv
 
 
@@ -104,7 +104,7 @@ def get_vector_average(sentence, tokenize_util, model, vector_size):
     word_list = tokenize(sentence, tokenizer)
     logger.debug('tokens: {}'.format(word_list))
 
-    if type(model) == sklearn.feature_extraction.text.TfidfVectorizer:
+    if type(model) == TfidfVectorizer:
         vector = model.transform(' '.join(word_list)).toarray().astype(np.float32)
     elif type(model) == gensim.models.doc2vec.Doc2Vec:
         vector = model.infer_vector(word_list)
