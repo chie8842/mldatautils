@@ -2,8 +2,13 @@ import gensim
 from gensim.models import doc2vec
 from gensim.models import word2vec
 from gensim.models import fasttext
-import sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
+import numpy as np
 import jaconv
+from logger import logger_config
+
+logger = logger_config('nlp_utils')
 
 
 def extract_all(parsed_sentence, tokenizer='mecab', use_jaconv=False):
@@ -20,11 +25,15 @@ def extract_all(parsed_sentence, tokenizer='mecab', use_jaconv=False):
     word_list = _extract_lemmatized_words(word_infos, use_jaconv)
     return word_list
 
+
 def _extract_lemmatized_words(word_infos, use_jaconv):
     word_list = []
     for word_info in word_infos:
-        word_list.append(_extract_lemmatized_word(word_info, use_jaconv))
+        word = _extract_lemmatized_word(word_info, use_jaconv)
+        if word not in ('', 'EOS'):
+            word_list.append(word)
     return word_list
+
 
 def _extract_lemmatized_word(word_info, use_jaconv):
     word_info = word_info.split('\t')
@@ -41,6 +50,7 @@ def _extract_lemmatized_word(word_info, use_jaconv):
         word = jaconv.normalize(word)
     return word
 
+
 def extract_noun(parsed_sentence, tokenizer='mecab', use_jaconv=False):
     '''
     Extract lemmatized? tokens from tokenized **noun** sentence.
@@ -53,6 +63,7 @@ def extract_noun(parsed_sentence, tokenizer='mecab', use_jaconv=False):
     word_list = _extract_noun_words(word_infos, use_jaconv)
     return word_list
 
+
 def _extract_noun_words(word_infos, use_jaconv):
     word_list = []
     for word_info in word_infos:
@@ -60,6 +71,7 @@ def _extract_noun_words(word_infos, use_jaconv):
         if word is not None:
             word_list.append(word)
     return word_list
+
 
 def _extract_noun_word(word_info, use_jaconv):
     word_info = word_info.split('\t')
@@ -74,6 +86,7 @@ def _extract_noun_word(word_info, use_jaconv):
             word = jaconv.z2h(word, digit=True, ascii=True)
             word = jaconv.normalize(word)
         return word
+
 
 def load_model(model_type, model_file):
     if model_type == 'doc2vec':
@@ -91,24 +104,50 @@ def load_model(model_type, model_file):
             vector_size = len(model.vocabulary_)
     return model, vector_size
 
-def get_vector_averages(sentence_list, tokenize_util, model_type):
-    model, vector_size = load_model(model_type)
-    vector = np.zeros((len(sentence_list), vector_size))
-    for i, sentence in enumerate(sentence_list):
-        vector[i] = get_vector(sentence, tokenize_util, model, vector_size)
-    vector = vector.astype(np.float32)
 
-def get_vector_average(sentence, tokenize_util, model, vector_size):
+def sentences_vectorizer(parsed_sentences, selector, use_jaconv, model, size, vector_size):
+    if size < vector_size:
+        logger.error('vector size should be bigger than size.')
+        return None
+    vector = np.zeros((len(parsed_sentences), size))
+    for i, parsed_sentence in enumerate(parsed_sentences):
+        vector[i] = sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, size)
+    vector = vector.astype(np.float32)
+    if size > vector_size:
+        logger.info('decompose vector with TruncatedSVD')
+        vector = TruncatedSVD(n_components=vector_size).fit_transform(vector)
+    return vector
+
+
+def sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, vector_size):
+    """
+    Args:
+        parsed_sentence(str): output of MeCab.Tagger().parse(sentence)
+        selector(func): extract_all(use all word) or extract_noun(use only noun)
+        use_jaconv(bool): use jaconv(Japanese character interconverter) or not
+        model: model of `word2vec` or `doc2vec` or `fasttext` or `tfidf`
+    size: the vector size of vectorizer model
+        vector_size: the size of result vector 
+    """
     vector = np.zeros(vector_size)
     word_num = 0
-    word_list = tokenize(sentence, tokenizer)
-    logger.debug('tokens: {}'.format(word_list))
+    word_list = selector(parsed_sentence, use_jaconv=use_jaconv)
+    logger.info('tokens: {}'.format(word_list))
 
     if type(model) == TfidfVectorizer:
+        if len(model.vocaburary_) != vector_size:
+            logger.error(f'model.vector_size is not equal to {vector_size}')
+            return vector
         vector = model.transform(' '.join(word_list)).toarray().astype(np.float32)
     elif type(model) == gensim.models.doc2vec.Doc2Vec:
+        if model.vector_size != vector_size:
+            logger.error(f'model.vector_size is not equal to {vector_size}')
+            return vector
         vector = model.infer_vector(word_list)
     else: # word2vec or fasttext
+        if model.vector_size != vector_size:
+            logger.error(f'model.vector_size is not equal to {vector_size}')
+            return vector
         for word in word_list:
             try:
                 word_vector = model.wv[word]
@@ -119,4 +158,3 @@ def get_vector_average(sentence, tokenize_util, model, vector_size):
     if word_num != 0:
         vector = vector / word_num
     return vector
-
