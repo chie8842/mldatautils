@@ -47,13 +47,13 @@ def make_dirs(dirname):
 
 
 def isnotebook():
-   """
-   e.g.
-   >>> if isnotebook():
-   >>>     from tqdm import tqdm_notebook as tqdm
-   >>> else:
-   >>>     from tqdm import tqdm
-   """
+    """
+    e.g.
+    >>> if isnotebook():
+    >>>     from tqdm import tqdm_notebook as tqdm
+    >>> else:
+    >>>     from tqdm import tqdm
+    """
     try:
         shell = get_ipython().__class__.__name__
         if shell == 'ZMQInteractiveShell':
