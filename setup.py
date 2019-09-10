@@ -8,7 +8,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='mldatautils',
-    version='0.0.2',
+    version='0.1.1',
     description="mldatautils",
     long_description="mldatautils",
     download_url='https://pypi.org/project/mldatautils',
