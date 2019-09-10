@@ -133,9 +133,9 @@ class vectorizer(object):
         for i, parsed_sentence in enumerate(parsed_sentences):
             vectors[i] = self.transform_sentence(parsed_sentence, token_filter, use_jaconv)
         vectors = vectors.astype(np.float32)
-        if self.model_dim > vector_size:
+        if self.model_dim > vector_dim:
             logger.info('decompose vector with TruncatedSVD')
-            vectors = TruncatedSVD(n_components=vector_size).fit_transform(vectors)
+            vectors = TruncatedSVD(n_components=vector_dim).fit_transform(vectors)
         return vectors
 
     def transform_sentence(self, parsed_sentence, token_filter, use_jaconv):
