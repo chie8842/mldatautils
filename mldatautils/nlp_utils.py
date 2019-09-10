@@ -6,9 +6,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 import numpy as np
 import jaconv
-from logger import logger_config
+from mldatautils.logger import logger_config
 
-logger = logger_config('nlp_utils')
+logger = logger_config('nlp_utils', 'WARN')
 
 
 def extract_all(parsed_sentence, tokenizer='mecab', use_jaconv=False):
@@ -109,14 +109,14 @@ def sentences_vectorizer(parsed_sentences, selector, use_jaconv, model, size, ve
     if size < vector_size:
         logger.error('vector size should be bigger than size.')
         return None
-    vector = np.zeros((len(parsed_sentences), size))
+    vectors = np.zeros((len(parsed_sentences), size))
     for i, parsed_sentence in enumerate(parsed_sentences):
-        vector[i] = sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, size)
-    vector = vector.astype(np.float32)
+        vectors[i] = sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, size)
+    vectors = vectors.astype(np.float32)
     if size > vector_size:
         logger.info('decompose vector with TruncatedSVD')
-        vector = TruncatedSVD(n_components=vector_size).fit_transform(vector)
-    return vector
+        vectors = TruncatedSVD(n_components=vector_size).fit_transform(vectors)
+    return vectors
 
 
 def sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, vector_size):
