@@ -105,13 +105,13 @@ def load_model(model_type, model_file):
     return model, vector_size
 
 
-def sentences_vectorizer(parsed_sentences, selector, use_jaconv, model, size, vector_size):
+def sentences_vectorizer(parsed_sentences, token_filter, use_jaconv, model, size, vector_size):
     if size < vector_size:
         logger.error('vector size should be bigger than size.')
         return None
     vectors = np.zeros((len(parsed_sentences), size))
     for i, parsed_sentence in enumerate(parsed_sentences):
-        vectors[i] = sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, size)
+        vectors[i] = sentence_vectorizer(parsed_sentence, token_filter, use_jaconv, model, size)
     vectors = vectors.astype(np.float32)
     if size > vector_size:
         logger.info('decompose vector with TruncatedSVD')
@@ -119,11 +119,11 @@ def sentences_vectorizer(parsed_sentences, selector, use_jaconv, model, size, ve
     return vectors
 
 
-def sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, vector_size):
+def sentence_vectorizer(parsed_sentence, token_filter, use_jaconv, model, vector_size):
     """
     Args:
         parsed_sentence(str): output of MeCab.Tagger().parse(sentence)
-        selector(func): extract_all(use all word) or extract_noun(use only noun)
+        token_filter(func): extract_all(use all word) or extract_noun(use only noun)
         use_jaconv(bool): use jaconv(Japanese character interconverter) or not
         model: model of `word2vec` or `doc2vec` or `fasttext` or `tfidf`
     size: the vector size of vectorizer model
@@ -131,7 +131,7 @@ def sentence_vectorizer(parsed_sentence, selector, use_jaconv, model, vector_siz
     """
     vector = np.zeros(vector_size)
     word_num = 0
-    word_list = selector(parsed_sentence, use_jaconv=use_jaconv)
+    word_list = token_filter(parsed_sentence, use_jaconv=use_jaconv)
     logger.info('tokens: {}'.format(word_list))
 
     if type(model) == TfidfVectorizer:
