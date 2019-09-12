@@ -6,10 +6,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 import numpy as np
 import jaconv
+import pickle
 from mldatautils.logger import logger_config
 
 
-class token_filter(object):
+class TokenFilter(object):
     """
     TODO: use_all and use_noun should be merged.
     """
@@ -25,14 +26,14 @@ class token_filter(object):
         '''
 
         word_infos = parsed_sentence.split('\n')
-        word_list = token_filter._extract_lemmatized_words(word_infos, use_jaconv)
+        word_list = TokenFilter._extract_lemmatized_words(word_infos, use_jaconv)
         return word_list
 
     @staticmethod
     def _extract_lemmatized_words(word_infos, use_jaconv):
         word_list = []
         for word_info in word_infos:
-            word = token_filter._extract_lemmatized_word(word_info, use_jaconv)
+            word = TokenFilter._extract_lemmatized_word(word_info, use_jaconv)
             if word not in ('', 'EOS'):
                 word_list.append(word)
         return word_list
@@ -63,20 +64,20 @@ class token_filter(object):
             word_list(list): tokens
         '''
         word_infos = parsed_sentence.split('\n')
-        word_list = token_filter._extract_noun_words(word_infos, use_jaconv)
+        word_list = TokenFilter._extract_lemmatized_nouns(word_infos, use_jaconv)
         return word_list
 
     @staticmethod
-    def _extract_noun_words(word_infos, use_jaconv):
+    def _extract_lemmatized_nouns(word_infos, use_jaconv):
         word_list = []
         for word_info in word_infos:
-            word = token_filter._extract_noun_word(word_info, use_jaconv)
+            word = TokenFilter._extract_lemmatized_noun(word_info, use_jaconv)
             if word is not None:
                 word_list.append(word)
         return word_list
 
     @staticmethod
-    def _extract_noun_word(word_info, use_jaconv):
+    def _extract_lemmatized_noun(word_info, use_jaconv):
         word_info = word_info.split('\t')
         word = word_info[0]
         if len(word_info) == 2 and word_info[1].split(',')[0] == '名詞':
@@ -91,7 +92,7 @@ class token_filter(object):
             return word
 
 
-class vectorizer(object):
+class Vectorizer(object):
     def __init__(self, model_type, model_file, log_level='WARN'):
         """
         model_type(str): `word2vec` or `doc2vec` or `fasttext` or `tfidf`
@@ -118,32 +119,34 @@ class vectorizer(object):
                 model_dim = len(model.vocabulary_)
         return model, model_dim
 
-    def transform_sentences(self, parsed_sentences, token_filter, use_jaconv, vector_dim):
+    def transform_sentences(self, parsed_sentences, token_filter, use_jaconv, vector_dim, pooling='avg'):
         """
         Args:
             parsed_sentences(str): a list or pd.Series of output of MeCab.Tagger().parse(sentence)
-            token_filter(func): token_filter.use_all(use all word) or token_filter.use_noun(use only noun)
+            token_filter(func): TokenFilter.use_all(use all word) or TokenFilter.use_noun(use only noun)
             use_jaconv(bool): use jaconv(Japanese character interconverter) or not
         """
         if self.model_dim < vector_dim:
             self.logger.error('vector size should be bigger than size.')
             return None
-        vectors = np.zeros((len(parsed_sentences), self.model_dim))
 
+        # TODO: transform sentences in one time when use doc2vec or tfidf
+        vectors = np.zeros((len(parsed_sentences), self.model_dim))
         for i, parsed_sentence in enumerate(parsed_sentences):
-            vectors[i] = self.transform_sentence(parsed_sentence, token_filter, use_jaconv)
+            vectors[i] = self.transform_sentence(parsed_sentence, token_filter, use_jaconv, pooling='avg')
         vectors = vectors.astype(np.float32)
         if self.model_dim > vector_dim:
-            logger.info('decompose vector with TruncatedSVD')
+            self.logger.info('decompose vector with TruncatedSVD')
             vectors = TruncatedSVD(n_components=vector_dim).fit_transform(vectors)
         return vectors
 
-    def transform_sentence(self, parsed_sentence, token_filter, use_jaconv):
+    def transform_sentence(self, parsed_sentence, token_filter, use_jaconv, pooling='avg'):
         """
         Args:
             parsed_sentence(str): output of MeCab.Tagger().parse(sentence)
-            token_filter(func): extract_all(use all word) or extract_noun(use only noun)
+            token_filter(func): TokenFilter.use_all(use all word) or TokenFilter.use_noun(use only noun)
             use_jaconv(bool): use jaconv(Japanese character interconverter) or not
+            pooling(str): avg or max
         """
         vector = np.zeros(self.model_dim)
         word_num = 0
@@ -151,17 +154,17 @@ class vectorizer(object):
         self.logger.info('tokens: {}'.format(word_list))
 
         if self.model_type == 'tfidf':
-            vector = self.model.transform(' '.join(word_list)).toarray().astype(np.float32)
+            vector = self.model.transform([' '.join(word_list)]).toarray().astype(np.float32)[0]
         elif self.model_type == 'doc2vec':
             vector = model.infer_vector(word_list)
-        else: # word2vec or fasttext
-            for word in word_list:
-                try:
-                    word_vector = self.model.wv[word]
-                    vector = vector + word_vector
-                    word_num += 1
-                except:
-                    logger.info('{} isn\'t in vocab'.format(word))
-        if word_num != 0:
-            vector = vector / word_num
+        elif self.model_type == 'fasttext':
+            if pooling == 'avg':
+                vector = self.model.wv[word_list].mean(axis=0)
+            else:  # max
+                vector = self.model.wv[word_list].max(axis=0)
+        else:  # word2vec
+            if pooling == 'avg':
+                vector = self.model.wv[filter(lambda x: x in self.model.wv.vocab, word_list)].mean(axis=0)
+            else:  # max
+                vector = self.model.wv[filter(lambda x: x in self.model.wv.vocab, word_list)].max(axis=0)
         return vector
