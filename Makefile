@@ -1,6 +1,8 @@
 include setenv.sh
+
+IMAGE_NAME := mldatautils_ex
 build-docker-ex:
-	docker build -t mldatautils_ex -f docker/Dockerfile .
+	docker build -t $(IMAGE_NAME) -f docker/Dockerfile .
 
 run-docker-ex:
 	docker run \
@@ -15,7 +17,7 @@ run-docker-ex:
 	-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) \
 	-e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) \
 	-v $(PWD):/work \
-	mldatautils_ex \
+	$(IMAGE_NAME) \
 	/bin/bash
 
 run-docker-test:
@@ -29,7 +31,7 @@ run-docker-test:
 	-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) \
 	-e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY) \
 	-v $(PWD):/work \
-	mldatautils_ex \
+	$(IMAGE_NAME) \
 	pytest
 
 upload-pypi:

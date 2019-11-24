@@ -2,8 +2,6 @@ import os
 import re
 import numpy as np
 import pandas as pd
-from queuery_client import Client
-from queuery_client import QueueryDataSource
 from pytz import timezone
 from datetime import date
 from datetime import datetime
