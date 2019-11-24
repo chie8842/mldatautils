@@ -7,42 +7,119 @@ from sklearn.decomposition import TruncatedSVD
 import numpy as np
 import jaconv
 import pickle
+import re
 from mldatautils.logger import logger_config
 
 
 class TokenFilter(object):
-    """
-    TODO: use_all and use_noun should be merged.
-    """
     @staticmethod
-    def use_all(parsed_sentence, tokenizer='mecab', use_jaconv=False):
+    def use_all_for_sentences(
+        parsed_sentences,
+        use_jaconv=False,
+        pos_list=[],
+        except_words=[],
+        exclude_numbers=False,
+        exclude_symbols=False
+    ):
+        '''
+        Extract lemmatized? tokens from tokenized sentence.
+        Currently this function suports only MeCab default format as input.
+        Args:
+            parsed_sentences(list): list of output of MeCab.Tagger().parse(sentence)
+            use_jaconv(bool): normalize tokens with jaconv or not
+            pos_list(list): if we specify `pos_list=['名詞', '動詞']`,
+                            it returns only the token which is `名詞` or `動詞`.
+            except_words(list): if we specify `except_words=['基本', 'きほん']`,
+                                it returns token list without word '基本' and 'きほん'.
+            exclude_numbers(boot): if we specify `True`, it returns token list
+                                   without `名詞 数` such as `2019`.
+            exclude_symbols(bool): if we specify `True`, it returns token list
+                                   without `記号`.
+        Returns:
+            word_list(list): tokens
+        '''
+        word_lists = [[]] * len(parsed_sentences)
+        for i, parsed_sentence in enumerate(parsed_sentences):
+            word_lists[i] = TokenFilter.use_all(
+                parsed_sentence, use_jaconv, pos_list, except_words, exclude_numbers, exclude_symbols)
+        return word_lists
+
+    @staticmethod
+    def use_all(
+        parsed_sentence,
+        use_jaconv=False,
+        pos_list=[],
+        except_words=[],
+        exclude_numbers=False,
+        exclude_symbols=False
+    ):
         '''
         Extract lemmatized? tokens from tokenized sentence.
         Currently this function suports only MeCab default format as input.
         Args:
             parsed_sentence(str): output of MeCab.Tagger().parse(sentence)
+            use_jaconv(bool): normalize tokens with jaconv or not
+            pos_list(list): if we specify `pos_list=['名詞', '動詞']`,
+                            it returns only the token which is `名詞` or `動詞`.
+            except_words(list): if we specify `except_words=['基本', 'きほん']`,
+                                it returns token list without word '基本' and 'きほん'.
+            exclude_numbers(boot): if we specify `True`, it returns token list
+                                   without `名詞 数` such as `2019`.
+            exclude_symbols(bool): if we specify `True`, it returns token list
+                                   without `記号`.
         Returns:
             word_list(list): tokens
         '''
 
         word_infos = parsed_sentence.split('\n')
-        word_list = TokenFilter._extract_lemmatized_words(word_infos, use_jaconv)
+        word_list = TokenFilter._extract_lemmatized_words(
+            word_infos,
+            use_jaconv,
+            pos_list,
+            except_words,
+            exclude_numbers,
+            exclude_symbols)
         return word_list
 
     @staticmethod
-    def _extract_lemmatized_words(word_infos, use_jaconv):
+    def _extract_lemmatized_words(
+        word_infos,
+        use_jaconv=False,
+        pos_list=[],
+        except_words=[],
+        exclude_numbers=False,
+        exclude_symbols=False
+    ):
         word_list = []
         for word_info in word_infos:
-            word = TokenFilter._extract_lemmatized_word(word_info, use_jaconv)
-            if word not in ('', 'EOS'):
+            word = TokenFilter._extract_lemmatized_word(
+                word_info,
+                use_jaconv,
+                pos_list,
+                exclude_numbers,
+                exclude_symbols)
+            except_words = ['', 'EOS'] + except_words
+            if word not in except_words:
                 word_list.append(word)
         return word_list
 
     @staticmethod
-    def _extract_lemmatized_word(word_info, use_jaconv):
+    def _extract_lemmatized_word(
+        word_info,
+        use_jaconv=False,
+        pos_list=[],
+        exclude_numbers=False,
+        exclude_symbols=False
+    ):
         word_info = word_info.split('\t')
         if len(word_info) > 1:
             word_details = word_info[1].split(',')
+            if pos_list != [] and word_details[0] not in pos_list:
+                return ''
+            if exclude_numbers and word_details[1] == '数':
+                return ''
+            if exclude_symbols and word_details[0] == '記号':
+                return ''
             if len(word_details) > 6 and word_details[6] != '*':
                 word = word_details[6]
             else:
@@ -55,41 +132,22 @@ class TokenFilter(object):
         return word
 
     @staticmethod
-    def use_noun(parsed_sentence, tokenizer='mecab', use_jaconv=False):
-        '''
-        Extract lemmatized? tokens from tokenized **noun** sentence.
-        Args:
-            parsed_sentence(str): output of MeCab.Tagger().parse(sentence)
-        Returns:
-            word_list(list): tokens
-        '''
-        word_infos = parsed_sentence.split('\n')
-        word_list = TokenFilter._extract_lemmatized_nouns(word_infos, use_jaconv)
-        return word_list
-
-    @staticmethod
-    def _extract_lemmatized_nouns(word_infos, use_jaconv):
-        word_list = []
-        for word_info in word_infos:
-            word = TokenFilter._extract_lemmatized_noun(word_info, use_jaconv)
-            if word is not None:
-                word_list.append(word)
-        return word_list
-
-    @staticmethod
-    def _extract_lemmatized_noun(word_info, use_jaconv):
-        word_info = word_info.split('\t')
-        word = word_info[0]
-        if len(word_info) == 2 and word_info[1].split(',')[0] == '名詞':
-            word_details = word_info[1].split(',')
-            if len(word_details) > 6 and word_details[6] != '*':
-                word = word_details[6]
-            else:
-                word = word_info[0]
-            if use_jaconv:
-                word = jaconv.z2h(word, digit=True, ascii=True)
-                word = jaconv.normalize(word)
-            return word
+    def remove_special_characters(text):
+        non_CJK_patterns = re.compile(
+            "[^"
+            u"\U00003040-\U0000309F"  # Hiragana
+            u"\U000030A0-\U000030FF"  # Katakana
+            u"\U0000FF65-\U0000FF9F"  # Half width Katakana
+            u"\U0000FF10-\U0000FF19"  # Full width digits
+            u"\U0000FF21-\U0000FF3A"  # Full width Upper case  English Alphabets
+            u"\U0000FF41-\U0000FF5A"  # Full width Lower case English Alphabets
+            u"\U00000030-\U00000039"  # Half width digits
+            u"\U00000041-\U0000005A"  # Half width  Upper case English Alphabets
+            u"\U00000061-\U0000007A"  # Half width Lower case English Alphabets
+            u"\U00003190-\U0000319F"  # Kanbun
+            u"\U00004E00-\U00009FFF"  # CJK unified ideographs. kanjis
+            "]+", flags=re.UNICODE)
+        return non_CJK_patterns.sub(r"", text)
 
 
 class Vectorizer(object):
@@ -119,39 +177,46 @@ class Vectorizer(object):
                 model_dim = len(model.vocabulary_)
         return model, model_dim
 
-    def transform_sentences(self, parsed_sentences, token_filter, use_jaconv, vector_dim, pooling='avg'):
+    def transform_sentences(self, words_list, vector_dim=None, pooling='avg'):
         """
         Args:
-            parsed_sentences(str): a list or pd.Series of output of MeCab.Tagger().parse(sentence)
-            token_filter(func): TokenFilter.use_all(use all word) or TokenFilter.use_noun(use only noun)
-            use_jaconv(bool): use jaconv(Japanese character interconverter) or not
+            words_list(str): a list or pd.Series of word list such as [['今日', 'は', 'いい', '天気'],[...]]
+            vector_dim(int): dimension of output vector
+            pooling(str): 'avg' or 'max'. vector summalize method when we use `word2vec` or `fasttext`
+                          for sentence vectorizer
         """
+        if vector_dim is None:
+            vector_dim = self.model_dim
         if self.model_dim < vector_dim:
             self.logger.error('vector size should be bigger than size.')
             return None
 
-        # TODO: transform sentences in one time when use doc2vec or tfidf
-        vectors = np.zeros((len(parsed_sentences), self.model_dim))
-        for i, parsed_sentence in enumerate(parsed_sentences):
-            vectors[i] = self.transform_sentence(parsed_sentence, token_filter, use_jaconv, pooling='avg')
-        vectors = vectors.astype(np.float32)
+        # TODO: transform sentences in one time when use doc2vec
+        if self.model_type == 'tfidf':
+            words_list = [' '.join(word_list) for word_list in words_list]
+            vectors = self.model.transform(words_list)
+        else:
+            vectors = np.zeros((len(words_list), self.model_dim), dtype='float32')
+            for i, word_list in enumerate(words_list):
+                vectors[i] = self.transform_sentence(word_list, pooling='avg')
         if self.model_dim > vector_dim:
             self.logger.info('decompose vector with TruncatedSVD')
             vectors = TruncatedSVD(n_components=vector_dim).fit_transform(vectors)
         return vectors
 
-    def transform_sentence(self, parsed_sentence, token_filter, use_jaconv, pooling='avg'):
+    def transform_sentence(self, word_list, pooling='avg'):
         """
         Args:
-            parsed_sentence(str): output of MeCab.Tagger().parse(sentence)
-            token_filter(func): TokenFilter.use_all(use all word) or TokenFilter.use_noun(use only noun)
-            use_jaconv(bool): use jaconv(Japanese character interconverter) or not
-            pooling(str): avg or max
+            word_list(str): a list or pd.Series of words such as ['今日', 'は', 'いい', '天気']
+            vector_dim(int): dimension of output vector
+            pooling(str): 'avg' or 'max'. vector summalize method when we use `word2vec` or `fasttext`
+                          for sentence vectorizer
         """
-        vector = np.zeros(self.model_dim)
+        vector = np.zeros(self.model_dim, dtype='float32')
         word_num = 0
-        word_list = token_filter(parsed_sentence, use_jaconv=use_jaconv)
         self.logger.info('tokens: {}'.format(word_list))
+        if not word_list:
+            return vector
 
         if self.model_type == 'tfidf':
             vector = self.model.transform([' '.join(word_list)]).toarray().astype(np.float32)[0]
