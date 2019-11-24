@@ -47,19 +47,17 @@ class MLDataBucketUtils(object):
         self.bucket_name = bucket_name
         self.bucket = self.s3.Bucket(self.bucket_name)
 
-    def s3_newest_version(self, env_type, project_name, additional_prefix=''):
+    def s3_newest_version(self, env_type, project_name):
         """ Returns newest model version in s3 which has following structure.
         s3://bucket_name/env_type/project_name(/additional_prefix).
 
         Args:
             env_type(str): production/staging/development
             project_name(str): project name
-            additional_prefix: If model prefix is 'production/tmp_project/models/yyyymmdd-HHMM',
-                               `additional_prefix` is 'models'
         Return:
             newest_version: newest version in valid version(formatted by 'yyyymmdd-HHMM')
         """
-        s3_prefix = os.path.join(env_type, project_name, additional_prefix)
+        s3_prefix = os.path.join(env_type, project_name)
         if s3_prefix[-1] != '/':
             s3_prefix = s3_prefix + '/'
         s3 = boto3.client('s3')
@@ -88,8 +86,8 @@ class MLDataBucketUtils(object):
             model_version(str): version of downloaded data in s3
         """
         if model_version is None:
-            model_version = self.s3_newest_version(env_type, project_name, additional_prefix)
-        s3_prefix = os.path.join(env_type, project_name, model_version)
+            model_version = self.s3_newest_version(env_type, project_name)
+        s3_prefix = os.path.join(env_type, project_name, model_version, additional_prefix)
         self.download_data(s3_prefix, model_dir)
         return model_version
 
@@ -104,9 +102,10 @@ class MLDataBucketUtils(object):
         """
         self.logger.info('download data from s3://{}/{} to '.format(self.bucket_name, s3_prefix, data_dir))
         for o in self.bucket.objects.filter(Prefix=s3_prefix).all():
+            # if o is ${s3_prefix}/xxx/yyy, data_path will be data_dir/xxx/yyy
             data_path = os.path.join(
                 data_dir,
-                re.sub(s3_prefix + '/', '', o.key))
+                re.sub(s3_prefix, '', o.key).lstrip('/'))
             make_dirs(os.path.dirname(data_path))
             self.bucket.download_file(o.key, data_path)
             self.logger.info('downloaded {} to {}'.format(o.key, data_path))
